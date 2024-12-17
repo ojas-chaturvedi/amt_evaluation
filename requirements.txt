@@ -5,4 +5,5 @@ numpy==2.2.0
 packaging==24.2
 pretty_midi==0.2.10
 scipy==1.14.1
+setuptools==75.6.0
 six==1.17.0
