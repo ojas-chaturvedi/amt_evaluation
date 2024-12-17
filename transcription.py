@@ -133,16 +133,16 @@ def validate(ref_intervals, ref_pitches, est_intervals, est_pitches):
     validate_intervals(ref_intervals, est_intervals)
 
     # Make sure intervals and pitches match in length
-    if not ref_intervals.shape[0] == ref_pitches.shape[0]:
-        raise ValueError("Reference intervals and pitches have different " "lengths.")
-    if not est_intervals.shape[0] == est_pitches.shape[0]:
-        raise ValueError("Estimated intervals and pitches have different " "lengths.")
+    if ref_intervals.shape[0] != ref_pitches.shape[0]:
+        raise ValueError("Reference intervals and pitches have different lengths.")
+    if est_intervals.shape[0] != est_pitches.shape[0]:
+        raise ValueError("Estimated intervals and pitches have different lengths.")
 
     # Make sure all pitch values are positive
     if ref_pitches.size > 0 and np.min(ref_pitches) <= 0:
-        raise ValueError("Reference contains at least one non-positive pitch " "value")
+        raise ValueError("Reference contains at least one non-positive pitch value")
     if est_pitches.size > 0 and np.min(est_pitches) <= 0:
-        raise ValueError("Estimate contains at least one non-positive pitch " "value")
+        raise ValueError("Estimate contains at least one non-positive pitch value")
 
 
 def validate_intervals(ref_intervals, est_intervals):
@@ -242,7 +242,7 @@ def match_note_offsets(
     offset_hit_matrix = cmp_func(offset_distances, offset_tolerances.reshape(-1, 1))
 
     # check for hits
-    hits = np.where(offset_hit_matrix)
+    hits = np.nonzero(offset_hit_matrix)
 
     # Construct the graph input
     # Flip graph so that 'matching' is a list of tuples where the first item
@@ -315,7 +315,7 @@ def match_note_onsets(ref_intervals, est_intervals, onset_tolerance=0.05, strict
     onset_hit_matrix = cmp_func(onset_distances, onset_tolerance)
 
     # find hits
-    hits = np.where(onset_hit_matrix)
+    hits = np.nonzero(onset_hit_matrix)
 
     # Construct the graph input
     # Flip graph so that 'matching' is a list of tuples where the first item
@@ -456,7 +456,7 @@ def match_notes(
 
     # check for overall matches
     note_hit_matrix = onset_hit_matrix * pitch_hit_matrix * offset_hit_matrix
-    hits = np.where(note_hit_matrix)
+    hits = np.nonzero(note_hit_matrix)
 
     # Construct the graph input
     # Flip graph so that 'matching' is a list of tuples where the first item
