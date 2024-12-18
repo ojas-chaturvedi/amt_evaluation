@@ -333,11 +333,21 @@ def match_note_onsets(ref_intervals, est_intervals, onset_tolerance=0.05, strict
     return matching
 
 
+INSTRUMENT_SIMILARITY = {
+    "Violin": {"Violin": 1.0, "Viola": 0.9, "Piano": 0.5, "Trombone": 0.3},
+    "Piano": {"Piano": 1.0, "Violin": 0.5, "Viola": 0.4, "Trombone": 0.6},
+    "Trombone": {"Trombone": 1.0, "Violin": 0.3, "Viola": 0.4, "Piano": 0.6},
+    # Add more instruments as needed
+}
+
+
 def match_notes(
     ref_intervals,
     ref_pitches,
     est_intervals,
     est_pitches,
+    ref_instruments=None,
+    est_instruments=None,
     onset_tolerance=0.05,
     pitch_tolerance=50.0,
     offset_ratio=0.2,
@@ -385,6 +395,10 @@ def match_notes(
         Array of estimated notes time intervals (onset and offset times)
     est_pitches : np.ndarray, shape=(m,)
         Array of estimated pitch values in Hertz
+    ref_instruments : list of Instrument objects, optional
+        List of reference note instruments.
+    est_instruments : list of Instrument objects, optional
+        List of estimated note instruments.
     onset_tolerance : float > 0
         The tolerance for an estimated note's onset deviating from the
         reference note's onset, in seconds. Default is 0.05 (50 ms).
@@ -464,12 +478,23 @@ def match_notes(
     # estimated note index.
     G = {}
     for ref_i, est_i in zip(*hits):
-        if est_i not in G:
-            G[est_i] = []
-        G[est_i].append(ref_i)
+        similarity = 1.0  # default similarity multiplier
+        if ref_instruments is not None and est_instruments is not None:
+            ref_instr = ref_instruments[ref_i].name
+            est_instr = est_instruments[est_i].name
+            similarity = INSTRUMENT_SIMILARITY.get(ref_instr, {}).get(est_instr, 0.0)
+
+        if similarity > 0:
+            if est_i not in G:
+                G[est_i] = []
+            G[est_i].append((ref_i, similarity))
 
     # Compute the maximum matching
-    matching = sorted(util._bipartite_match(G).items())
+    # matching = sorted(util._bipartite_match(G).items())
+    matching = []
+    for est_i, refs in G.items():
+        ref_i, similarity = max(refs, key=lambda x: x[1])
+        matching.append((ref_i, est_i, similarity))
 
     return matching
 
@@ -479,6 +504,8 @@ def precision_recall_f1_overlap(
     ref_pitches,
     est_intervals,
     est_pitches,
+    ref_instruments=None,
+    est_instruments=None,
     onset_tolerance=0.05,
     pitch_tolerance=50.0,
     offset_ratio=0.2,
@@ -526,6 +553,10 @@ def precision_recall_f1_overlap(
         Array of estimated notes time intervals (onset and offset times)
     est_pitches : np.ndarray, shape=(m,)
         Array of estimated pitch values in Hertz
+    ref_instruments : list of Instrument objects, optional
+        List of reference note instruments.
+    est_instruments : list of Instrument objects, optional
+        List of estimated note instruments.
     onset_tolerance : float > 0
         The tolerance for an estimated note's onset deviating from the
         reference note's onset, in seconds. Default is 0.05 (50 ms).
@@ -573,6 +604,8 @@ def precision_recall_f1_overlap(
         ref_pitches,
         est_intervals,
         est_pitches,
+        ref_instruments=ref_instruments,
+        est_instruments=est_instruments,
         onset_tolerance=onset_tolerance,
         pitch_tolerance=pitch_tolerance,
         offset_ratio=offset_ratio,
@@ -580,11 +613,14 @@ def precision_recall_f1_overlap(
         strict=strict,
     )
 
-    precision = float(len(matching)) / len(est_pitches)
-    recall = float(len(matching)) / len(ref_pitches)
+    total_similarity = sum(weight for _, _, weight in matching)
+    precision = total_similarity / len(est_pitches)
+    recall = total_similarity / len(ref_pitches)
     f_measure = util.f_measure(precision, recall, beta=beta)
 
-    avg_overlap_ratio = average_overlap_ratio(ref_intervals, est_intervals, matching)
+    avg_overlap_ratio = average_overlap_ratio(
+        ref_intervals, est_intervals, [m[:2] for m in matching]
+    )
 
     return precision, recall, f_measure, avg_overlap_ratio
 
@@ -804,7 +840,7 @@ def evaluate(ref_intervals, ref_pitches, est_intervals, est_pitches, **kwargs):
         Array of estimated notes time intervals (onset and offset times)
     est_pitches : np.ndarray, shape=(m,)
         Array of estimated pitch values in Hertz
-    **kwargs
+    kwargs
         Additional keyword arguments which will be passed to the
         appropriate metric or preprocessing functions.
 
@@ -816,6 +852,9 @@ def evaluate(ref_intervals, ref_pitches, est_intervals, est_pitches, **kwargs):
     """
     # Compute all the metrics
     scores = collections.OrderedDict()
+
+    ref_instruments = kwargs.pop("ref_instruments", None)
+    est_instruments = kwargs.pop("est_instruments", None)
 
     # Precision, recall and f-measure taking note offsets into account
     kwargs.setdefault("offset_ratio", 0.2)
@@ -832,7 +871,9 @@ def evaluate(ref_intervals, ref_pitches, est_intervals, est_pitches, **kwargs):
             ref_pitches,
             est_intervals,
             est_pitches,
-            **kwargs
+            ref_instruments=ref_instruments,
+            est_instruments=est_instruments,
+            **kwargs,
         )
 
     # Precision, recall and f-measure NOT taking note offsets into account
@@ -848,7 +889,9 @@ def evaluate(ref_intervals, ref_pitches, est_intervals, est_pitches, **kwargs):
         ref_pitches,
         est_intervals,
         est_pitches,
-        **kwargs
+        ref_instruments=ref_instruments,
+        est_instruments=est_instruments,
+        **kwargs,
     )
 
     # onset-only metrics
