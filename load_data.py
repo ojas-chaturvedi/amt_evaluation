@@ -11,14 +11,32 @@ __license__ = "MIT"
 import argparse
 import pretty_midi
 import numpy as np
+import yaml
 
 
 def extract_notes_with_offset(midi_file) -> list:
     # Load the MIDI file
     midi_data = pretty_midi.PrettyMIDI(midi_file)
+
+    # Load the instrument data
+    with open("midi_instruments.yaml", "r") as file:
+        instrument_data = yaml.safe_load(file)
+
     # Extract instrument, onset, offset, and pitch
     note_events = []
     for instrument in midi_data.instruments:
+
+        # Make sure each instrument object has a name
+        if instrument.name == "":
+            if instrument.is_drum == False:
+                instrument.name = instrument_data["melodic"].get(
+                    instrument.program, "Unknown Melodic Instrument"
+                )
+            else:
+                instrument.name = instrument_data["percussion"].get(
+                    instrument.program, "Unknown Percussion Instrument"
+                )
+
         for note in instrument.notes:
             onset = note.start
             offset = note.end
