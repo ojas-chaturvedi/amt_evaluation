@@ -108,6 +108,7 @@ import numpy as np
 import collections
 from mir_eval import util
 import warnings
+import yaml
 
 
 # The number of decimals to keep for onset/offset threshold checks
@@ -333,14 +334,6 @@ def match_note_onsets(ref_intervals, est_intervals, onset_tolerance=0.05, strict
     return matching
 
 
-INSTRUMENT_SIMILARITY = {
-    "Violin": {"Violin": 1.0, "Viola": 0.9, "Piano": 0.5, "Trombone": 0.3},
-    "Piano": {"Piano": 1.0, "Violin": 0.5, "Viola": 0.4, "Trombone": 0.6},
-    "Trombone": {"Trombone": 1.0, "Violin": 0.3, "Viola": 0.4, "Piano": 0.6},
-    # Add more instruments as needed
-}
-
-
 def match_notes(
     ref_intervals,
     ref_pitches,
@@ -476,6 +469,7 @@ def match_notes(
     # Flip graph so that 'matching' is a list of tuples where the first item
     # in each tuple is the reference note index, and the second item is the
     # estimated note index.
+    INSTRUMENT_SIMILARITY = yaml.safe_load(open("instrument_similarity.yaml", "r"))
     G = {}
     for ref_i, est_i in zip(*hits):
         similarity = 1.0  # default similarity multiplier
