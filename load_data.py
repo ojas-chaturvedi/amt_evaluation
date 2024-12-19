@@ -18,50 +18,52 @@ def extract_notes_with_offset(midi_file) -> list:
     # Load the MIDI file
     midi_data = pretty_midi.PrettyMIDI(midi_file)
 
-    # Load the instrument data
-    with open("midi_instruments.yaml", "r") as file:
-        instrument_data = yaml.safe_load(file)
-
     # Extract instrument, onset, offset, and pitch
     note_events = []
     for instrument in midi_data.instruments:
 
-        # Make sure each instrument object has a name
-        if instrument.name == "":
-            if instrument.is_drum == False:
-                instrument.name = instrument_data["melodic"].get(
-                    instrument.program, "Unknown Melodic Instrument"
-                )
-            else:
-                instrument.name = instrument_data["percussion"].get(
-                    instrument.program, "Unknown Percussion Instrument"
-                )
+        if instrument.is_drum == True:
+            continue
 
         for note in instrument.notes:
             onset = note.start
             offset = note.end
             pitch = note.pitch
-            note_events.append((instrument, onset, offset, pitch))
+            note_events.append(
+                (get_instrument_family(instrument.program), onset, offset, pitch)
+            )
     # Sort by onset time
     note_events.sort(key=lambda x: x[1])
 
     return note_events
 
 
+def get_instrument_family(program_number: int) -> str:
+    # Load the instrument data
+    with open("instrument_families.yaml", "r") as file:
+        instrument_data = yaml.safe_load(file)
+
+    for family, instruments in instrument_data["instrument_families"].items():
+        if isinstance(instruments, dict) and program_number in instruments:
+            return family
+
+    return "Unknown"
+
+
 def prepare_data_for_mir_eval(note_events) -> tuple:
     intervals = []
-    instruments = []
+    families = []
     pitches = []
-    for instrument, onset, offset, pitch in note_events:
+    for family, onset, offset, pitch in note_events:
         intervals.append([onset, offset])
-        instruments.append(instrument)
+        families.append(family)
         pitches.append(pitch)
     # Convert to NumPy arrays
     intervals = np.array(intervals)
-    instruments = np.array(instruments)
+    families = np.array(families)
     pitches = np.array(pitches)
 
-    return intervals, instruments, pitches
+    return intervals, families, pitches
 
 
 def main() -> None:
@@ -78,8 +80,8 @@ def main() -> None:
     # Extract notes from the MIDI file
     note_events = extract_notes_with_offset(args.path)
 
-    # Prepare intervals and pitches for mir_eval
-    intervals, instruments, pitches = prepare_data_for_mir_eval(note_events)
+    # Prepare intervals, instrument families, and pitches for mir_eval
+    intervals, instrument_families, pitches = prepare_data_for_mir_eval(note_events)
 
     # Optionally, save the extracted notes to a file if an output path is provided
     if args.output:
@@ -89,7 +91,7 @@ def main() -> None:
     else:
         # Print the results
         print(f"Intervals: {intervals}")
-        print(f"Instruments: {instruments}")
+        print(f"Instrument Families: {instrument_families}")
         print(f"Pitches: {pitches}")
 
 

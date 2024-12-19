@@ -395,10 +395,10 @@ def match_notes(
         Array of estimated notes time intervals (onset and offset times)
     est_pitches : np.ndarray, shape=(m,)
         Array of estimated pitch values in Hertz
-    ref_instruments : list of Instrument objects, optional
-        List of reference note instruments.
-    est_instruments : list of Instrument objects, optional
-        List of estimated note instruments.
+    ref_instruments : list of str, optional
+        List of reference note instrument families for similarity test.
+    est_instruments : list of str, optional
+        List of estimated note instrument families for similarity test.
     onset_tolerance : float > 0
         The tolerance for an estimated note's onset deviating from the
         reference note's onset, in seconds. Default is 0.05 (50 ms).
@@ -480,9 +480,10 @@ def match_notes(
     for ref_i, est_i in zip(*hits):
         similarity = 1.0  # default similarity multiplier
         if ref_instruments is not None and est_instruments is not None:
-            ref_instr = ref_instruments[ref_i].name
-            est_instr = est_instruments[est_i].name
+            ref_instr = ref_instruments[ref_i]
+            est_instr = est_instruments[est_i]
             similarity = INSTRUMENT_SIMILARITY.get(ref_instr, {}).get(est_instr, 0.0)
+            similarity = 1.0 if similarity > 1.0 else similarity
 
         if similarity > 0:
             if est_i not in G:
@@ -553,10 +554,10 @@ def precision_recall_f1_overlap(
         Array of estimated notes time intervals (onset and offset times)
     est_pitches : np.ndarray, shape=(m,)
         Array of estimated pitch values in Hertz
-    ref_instruments : list of Instrument objects, optional
-        List of reference note instruments.
-    est_instruments : list of Instrument objects, optional
-        List of estimated note instruments.
+    ref_instruments : list of str, optional
+        List of reference note instrument families for similarity test.
+    est_instruments : list of str, optional
+        List of estimated note instrument families for similarity test.
     onset_tolerance : float > 0
         The tolerance for an estimated note's onset deviating from the
         reference note's onset, in seconds. Default is 0.05 (50 ms).

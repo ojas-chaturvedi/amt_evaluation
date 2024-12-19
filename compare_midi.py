@@ -33,10 +33,10 @@ def main():
     estimated_notes = extract_notes_with_offset(args.transcription)
 
     # Prepare intervals and pitches for both reference and estimated notes
-    ref_intervals, ref_instruments, ref_pitches = prepare_data_for_mir_eval(
+    ref_intervals, ref_instrument_families, ref_pitches = prepare_data_for_mir_eval(
         reference_notes
     )
-    est_intervals, est_instruments, est_pitches = prepare_data_for_mir_eval(
+    est_intervals, est_instrument_families, est_pitches = prepare_data_for_mir_eval(
         estimated_notes
     )
 
@@ -46,8 +46,8 @@ def main():
         ref_pitches,
         est_intervals,
         est_pitches,
-        ref_instruments=ref_instruments,
-        est_instruments=est_instruments,
+        ref_instruments=ref_instrument_families,
+        est_instruments=est_instrument_families,
     )
 
     # Optionally, save the F1 score to a file if an output path is provided
